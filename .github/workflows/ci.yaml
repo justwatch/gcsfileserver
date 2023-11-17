@@ -1,25 +1,16 @@
-name: "CI"
+name: CI
 on:
   push:
 
 jobs:
-  build-and-push-ghcr:
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    permissions:
-      packages: write
-      contents: read
-    steps:
-      - uses: actions/checkout@v3
-      - name: Build container image
-        run: docker build . --file Dockerfile --tag ${{ github.event.repository.name }}
-      - name: Log into GitHub Container Registry
-        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u $ --password-stdin
-      - name: Push container image
-        run: |
-          IMAGE_ID=ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}
-          IMAGE_TAG=${{ github.sha }}
-          docker tag ${{ github.event.repository.name }} $IMAGE_ID:$IMAGE_TAG
-          docker push $IMAGE_ID:$IMAGE_TAG
-          docker tag ${{ github.event.repository.name }} $IMAGE_ID:latest
-          docker push $IMAGE_ID:latest
+  get-commit-info:
+    uses: "justwatch/reusable_workflows/.github/workflows/get-commit-info.yml@main"
+
+  build-and-push:
+    needs: [get-commit-info]
+    uses: "justwatch/reusable_workflows/.github/workflows/infra_build_docker.yml@main"
+    secrets: inherit
+    with:
+      IMAGE_NAME: ${{ github.event.repository.name }}
+      IMAGE_TAG: ${{ needs.get-commit-info.outputs.Hash }}
+      DOCKERFILE: Dockerfile
