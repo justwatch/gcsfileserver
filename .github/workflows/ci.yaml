@@ -4,13 +4,14 @@ on:
 
 jobs:
   get-commit-info:
-    uses: "justwatch/reusable_workflows/.github/workflows/get-commit-info.yml@main"
+    uses: 'justwatch/reusable_workflows/.github/workflows/get-commit-info.yml@main'
 
-  build-and-push:
+  push-docker-image:
     needs: [get-commit-info]
-    uses: "justwatch/reusable_workflows/.github/workflows/infra_build_docker.yml@main"
-    secrets: inherit
+    uses: "justwatch/reusable_workflows/.github/workflows/build-docker-image.yml@main"
     with:
       IMAGE_NAME: ${{ github.event.repository.name }}
       IMAGE_TAG: ${{ needs.get-commit-info.outputs.Hash }}
       DOCKERFILE: Dockerfile
+      PUSH: true
+    secrets: inherit
