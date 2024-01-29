@@ -17,6 +17,7 @@ func main() {
 		DirListPageSize: 100,
 	}
 	http.Handle("/", &s)
+	http.Handle("/assets", &s)
 	http.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("ok"))
