@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -16,6 +17,7 @@ import (
 )
 
 const DEFAULT_DIRLIST_PAGE_SIZE = 100
+const DEFAULT_HTTP_TIMEOUT_SECONDS = 5
 
 type OBJECT_TYPE uint
 
@@ -61,12 +63,32 @@ func gcsBucketHandle(ctx context.Context, w http.ResponseWriter, gcsClient *stor
 }
 
 type Server struct {
-	DirListPageSize int
+	DirListPageSize    int
+	HTTPTimeoutSeconds int
 }
 
 type ObjAttrsWithErr struct {
 	Attrs *storage.ObjectAttrs
 	Error error
+}
+
+// getHTTPTimeoutSeconds returns the HTTP timeout in seconds from the HTTP_TIMEOUT_SECONDS
+// environment variable, or the default value if not set or invalid.
+func getHTTPTimeoutSeconds() int {
+	timeoutStr := os.Getenv("HTTP_TIMEOUT_SECONDS")
+	if timeoutStr == "" {
+		return DEFAULT_HTTP_TIMEOUT_SECONDS
+	}
+	timeout, err := strconv.Atoi(timeoutStr)
+	if err != nil {
+		log.Printf("Invalid HTTP_TIMEOUT_SECONDS value '%s', using default %d seconds: %v", timeoutStr, DEFAULT_HTTP_TIMEOUT_SECONDS, err)
+		return DEFAULT_HTTP_TIMEOUT_SECONDS
+	}
+	if timeout <= 0 {
+		log.Printf("HTTP_TIMEOUT_SECONDS must be positive, got %d, using default %d seconds", timeout, DEFAULT_HTTP_TIMEOUT_SECONDS)
+		return DEFAULT_HTTP_TIMEOUT_SECONDS
+	}
+	return timeout
 }
 
 func fileOrDirExists(ctx context.Context, bucketHandle *storage.BucketHandle, gcsPath string, objAttrsWithErr *ObjAttrsWithErr) (bool, OBJECT_TYPE) {
@@ -102,7 +124,10 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if s.DirListPageSize == 0 {
 		s.DirListPageSize = DEFAULT_DIRLIST_PAGE_SIZE
 	}
-	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+	if s.HTTPTimeoutSeconds == 0 {
+		s.HTTPTimeoutSeconds = getHTTPTimeoutSeconds()
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), time.Duration(s.HTTPTimeoutSeconds)*time.Second)
 	defer cancel()
 	gcsClient := gcsClient(ctx, w)
 	bucketHandle := gcsBucketHandle(ctx, w, gcsClient)
