@@ -1,4 +1,4 @@
-name: CI
+name: "CI"
 on:
   push:
 
@@ -7,10 +7,11 @@ jobs:
     uses: "justwatch/reusable_workflows/.github/workflows/get-commit-info.yml@main"
 
   build-and-push:
-    needs: [get-commit-info]
-    uses: "justwatch/reusable_workflows/.github/workflows/infra_build_docker.yml@main"
-    secrets: inherit
+    needs:
+      - get-commit-info
+    uses: "justwatch/reusable_workflows/.github/workflows/build-push-image.yml@main"
     with:
       IMAGE_NAME: ${{ github.event.repository.name }}
       IMAGE_TAG: ${{ needs.get-commit-info.outputs.Hash }}
       DOCKERFILE: Dockerfile
+    secrets: inherit
